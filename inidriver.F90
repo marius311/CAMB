@@ -14,6 +14,7 @@
     use Bispectrum
     use CAMBmain
     use NonLinear
+    use ticker
 #ifdef NAGF95
     use F90_UNIX
 #endif
@@ -34,6 +35,8 @@
 #endif
 
     logical bad
+
+    call ticker_init
 
     InputFile = ''
     if (GetParamCount() /= 0)  InputFile = GetParam(1)

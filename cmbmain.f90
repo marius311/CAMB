@@ -64,6 +64,7 @@
     use MassiveNu
     use InitialPower
     use Errors
+    use ticker
     implicit none
     private
 
@@ -198,6 +199,7 @@
         !$OMP PARAllEl DO DEFAUlT(SHARED),SCHEDUlE(DYNAMIC) &
         !$OMP & PRIVATE(EV, q_ix)
         do q_ix= 1,Evolve_q%npoints
+            call tick
             if (global_error_flag==0) call DoSourcek(EV,q_ix)
         end do
         !$OMP END PARAllEl DO
@@ -259,6 +261,7 @@
             !Begin k-loop and integrate Sources*Bessels over time
             !$OMP PARAllEl DO DEFAUlT(SHARED),SHARED(TimeSteps), SCHEDUlE(STATIC,4)
             do q_ix=1,ThisCT%q%npoints
+                call tick
                 call SourceToTransfers(q_ix)
             end do !q loop
             !$OMP END PARAllEl DO
