@@ -370,7 +370,7 @@
         write(*,*) 'There is nothing to do! Do transfer functions or Cls.'
     end if
 
-    if (P%h0 < 20._dl.or.P%h0 > 100._dl) then
+    if (P%h0 < 20._dl.or.P%h0 > 200._dl) then
         OK = .false.
         write(*,*) '  Warning: H0 has units of km/s/Mpc. You have:', P%h0
     end if
@@ -378,7 +378,7 @@
         write(*,*) '  Warning: Tcmb has units of K.  Your have:', P%tcmb
     end if
 
-    if (P%yhe < 0.2d0.or.P%yhe > 0.8d0) then
+    if (P%yhe < 0.05d0.or.P%yhe > 0.8d0) then
         OK = .false.
         write(*,*) &
         '  Warning: YHe is the Helium fraction of baryons.', &
