@@ -25,16 +25,13 @@ contains
             inquire(file=progress_template, exist=template_exists)
             if (template_exists) then
                 open(newunit=lun, file=progress_template, action="read", iostat=stat)
-                print *, lun, stat
                 do nticks=1,NTICKS_MAX
                     read (lun,*,iostat=stat) tick_time(nticks)
                     if (stat /= 0) exit
                 end do
                 max_tick_time = tick_time(nticks-1)
-                print *, max_tick_time
                 close(lun)
                 open(newunit=lun,file=progress,action="write", iostat=stat)
-                print *, lun, stat
 
             else
                 open(newunit=lun, file=progress_template, action="write")
