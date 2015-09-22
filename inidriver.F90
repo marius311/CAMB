@@ -3,7 +3,7 @@
     !     See readme.html for documentation. This is a sample driver routine that reads
     !     in one set of parameters and produdes the corresponding output.
 
-    program driver
+module pycamb
     use IniFile
     use CAMB
     use LambdaGeneral
@@ -14,10 +14,27 @@
     use Bispectrum
     use CAMBmain
     use NonLinear
+    use ThermoData
 #ifdef NAGF95
     use F90_UNIX
 #endif
     implicit none
+    public
+
+    real(8), dimension(:,:,:), allocatable :: cl_scalar_
+    real(8), dimension(:,:,:), allocatable :: cl_tensor_
+    real(8), dimension(:,:,:), allocatable :: cl_lensed_
+    real(8), dimension(:,:,:), allocatable :: transfer_
+    real(4), dimension(:,:,:,:), allocatable :: mpk_lin_, mpk_nonlin_
+
+    real(8) :: z_drag_!, sigma8_
+
+contains
+
+subroutine run(lines,nchar,nlines)
+
+    character(len=nchar), dimension(nlines) :: lines
+    integer :: nchar, nlines
 
     Type(CAMBparams) P
 
@@ -27,7 +44,8 @@
     integer i
     character(LEN=Ini_max_string_len) TransferFileNames(max_transfer_redshifts), &
     MatterPowerFileNames(max_transfer_redshifts), outroot, version_check
-    real(dl) output_factor, nmassive
+    real(dl) output_factor, Age, nmassive
+    real(dl), external :: dsoundda, rombint
 
 #ifdef WRITE_FITS
     character(LEN=Ini_max_string_len) FITSfilename
@@ -35,12 +53,7 @@
 
     logical bad
 
-    InputFile = ''
-    if (GetParamCount() /= 0)  InputFile = GetParam(1)
-    if (InputFile == '') stop 'No parameter input file'
-
-    call Ini_Open(InputFile, 1, bad, .false.)
-    if (bad) stop 'Error opening parameter file'
+    call Ini_Open_FromLines(DefIni, lines, nlines, .false.)
 
     Ini_fail_on_not_found = .false.
 
@@ -300,13 +313,8 @@
     else
         lSampleBoost   = Ini_Read_Double('l_sample_boost',lSampleBoost)
     end if
-    if (outroot /= '') then
-        if (InputFile /= trim(outroot) //'params.ini') then
-            call Ini_SaveReadValues(trim(outroot) //'params.ini',1)
-        else
-            write(*,*) 'Output _params.ini not created as would overwrite input'
-        end if
-    end if
+
+    P%want_zdrag = .true.
 
     call Ini_Close
 
@@ -322,43 +330,101 @@
         stop
     endif
 
-    if (P%PK_WantTransfer) then
-        call Transfer_SaveToFiles(MT,TransferFileNames)
-        call Transfer_SaveMatterPower(MT,MatterPowerFileNames)
-        call Transfer_output_sig8(MT)
+    if ((P%WantTransfer) .and. .not. (P%NonLinear==NonLinear_lens .and. P%DoLensing)) then
+        transfer_ = MT%TransferData
+        call get_mpk(mpk_nonlin_)
+        CP%NonLinear = Nonlinear_None
+        call get_mpk(mpk_lin_)
+        ! if ((P%OutputNormalization /= outCOBE) .or. .not. P%WantCls)  call Transfer_output_sig8(MT)
+    end if
+
+    if (P%want_zdrag) then
+        if (.not. P%WantCls) then
+            call CAMBParams_Set(P)
+            call InitVars
+        end if
+        z_drag_ = z_drag
     end if
 
     if (P%WantCls) then
-        call output_cl_files(ScalarFileName, ScalarCovFileName, TensorFileName, TotalFileName, &
-        LensedFileName, LensedTotFilename, output_factor)
+        ! call output_cl_files(ScalarFileName, ScalarCovFileName, TensorFileName, TotalFileName, &
+        ! LensedFileName, LensedTotFilename, output_factor)
 
-        call output_lens_pot_files(LensPotentialFileName, output_factor)
+        !     if (P%OutputNormalization == outCOBE) then
+        !         if (P%WantTransfer) call Transfer_output_Sig8AndNorm(MT)
+        ! end if
 
-        if (P%WantVectors) then
-            call output_veccl_files(VectorFileName, output_factor)
-        end if
-
-#ifdef WRITE_FITS
-        if (FITSfilename /= '') call WriteFitsCls(FITSfilename, CP%Max_l)
-#endif
+            if (allocated(cl_scalar)) cl_scalar_ = cl_scalar*output_factor
+            if (allocated(cl_tensor)) cl_tensor_ = cl_tensor*output_factor
+            if (allocated(cl_lensed)) cl_lensed_ = cl_lensed*output_factor
     end if
 
     call CAMB_cleanup
-    stop
+    return 
 
 100 stop 'Must give num_massive number of integer physical neutrinos for each eigenstate'
-    end program driver
+
+end subroutine
 
 
-#ifdef RUNIDLE
-    !If in Windows and want to run with low priorty so can multitask
-    subroutine SetIdle
-    USE DFWIN
-    Integer dwPriority
-    Integer CheckPriority
+subroutine get_mpk(mpk_)
+    use Transfer
+    !Export files of total  matter power spectra in h^{-1} Mpc units, against k/h.
+    Type(MatterTransferData) :: MTrans
+    integer itf,in,i
+    integer points
+    character(LEN=80) fmt
+    real minkh,dlnkh
+    real(4), dimension(:,:,:,:), allocatable :: mpk_
+    Type(MatterPowerData) :: PK_data
 
-    dwPriority = 64 ! idle priority
-    CheckPriority = SetPriorityClass(GetCurrentProcess(), dwPriority)
+    MTrans = MT
 
-    end subroutine SetIdle
-#endif
+    write (fmt,*) CP%InitPower%nn+1
+    fmt = '('//trim(adjustl(fmt))//'E15.5)'
+
+    if (allocated(mpk_)) deallocate(mpk_)
+
+    if (.not. transfer_interp_matterpower ) then
+
+        points = MTrans%num_q_trans
+        allocate(mpk_(2,points,CP%Transfer%num_redshifts,CP%InitPower%nn))
+
+        do itf=1, CP%Transfer%num_redshifts
+            do in = 1, CP%InitPower%nn
+                call Transfer_GetMatterPowerData(MTrans, PK_data, in, itf)
+                if (CP%NonLinear/=NonLinear_None) call MatterPowerdata_MakeNonlinear(PK_Data)
+                mpk_(1,:,in,itf) = MTrans%TransferData(Transfer_kh,:,in)
+                mpk_(2,:,in,itf) = exp(PK_data%matpower(:,1))
+                call MatterPowerdata_Free(PK_Data)
+            end do
+        end do
+
+    else
+
+        minkh = 1e-4
+        dlnkh = 0.02
+        points = log(MTrans%TransferData(Transfer_kh,MTrans%num_q_trans,1)/minkh)/dlnkh+1
+        allocate(mpk_(2,points,CP%Transfer%num_redshifts,CP%InitPower%nn))
+
+        do itf=1, CP%Transfer%num_redshifts
+            do in = 1, CP%InitPower%nn
+                call Transfer_GetMatterPower(MTrans,mpk_(2,:,in,itf), itf, in, minkh,dlnkh, points)
+                ! if (CP%OutputNormalization == outCOBE) then
+                !     if (allocated(COBE_scales)) then
+                !         mpk_(2,:,in,itf) = mpk_(2,:,in,itf)*COBE_scales(in)
+                !     else
+                !         if (FeedbackLevel>0) write (*,*) 'Cannot COBE normalize - no Cls generated'
+                !     end if
+                ! end if
+                do i = 1, points
+                    mpk_(1,i,in,itf) = minkh*exp((i-1)*dlnkh)
+                end do
+            end do
+        end do
+
+    end if
+
+end subroutine
+
+end module
