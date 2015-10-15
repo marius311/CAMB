@@ -14,7 +14,7 @@ module ticker
     integer :: curtick = 0
     real :: max_tick_time
 
-    character(len=*), parameter :: progress          = "/tmp/progress"
+    character(len=*), parameter :: progress = "/root/shared/results/progress"
     character(len=*), parameter :: progress_template = "/root/shared/progress_template"
 
 contains
