@@ -232,7 +232,7 @@
             LensedFileName =  trim(outroot) //Ini_Read_String('lensed_output_file')
             LensPotentialFileName =  Ini_Read_String('lens_potential_output_file')
             if (LensPotentialFileName/='') LensPotentialFileName = concat(outroot,LensPotentialFileName)
-            ScalarCovFileName =  Ini_Read_String_Default('scalar_covariance_output_file','scalCovCls.dat',.false.)
+            ScalarCovFileName =  Ini_Read_String('scalar_covariance_output_file')
             if (ScalarCovFileName/='') then
                 has_cl_2D_array = .true.
                 ScalarCovFileName = concat(outroot,ScalarCovFileName)
