@@ -16,6 +16,11 @@ Reionization_AccuracyBoost = dll_import(c_bool, "reionization", "reionization_ac
 Rionization_zexp = dll_import(c_bool, "reionization", "rionization_zexp")
 
 
+
+#this should only be changed simultaneously as in reionization.f90
+max_reionization_redshifts = 200 
+
+
 # ---Derived Types in reionization.f90
 
 class ReionizationParams(CAMB_Structure):
@@ -25,13 +30,19 @@ class ReionizationParams(CAMB_Structure):
     _fields_ = [
         ("Reionization", c_int),  # logical
         ("use_optical_depth", c_int),  # logical
+        ("use_custom_xe", c_int),  # logical
         ("redshift", c_double),
         ("delta_redshift", c_double),
         ("fraction", c_double),
         ("optical_depth", c_double),
         ("helium_redshift", c_double),  # helium_redshift  = 3.5_dl
         ("helium_delta_redshift", c_double),  # helium_delta_redshift  = 0.5
-        ("helium_redshiftstart", c_double)  # helium_redshiftstart  = 5._dl
+        ("helium_redshiftstart", c_double),  # helium_redshiftstart  = 5._dl
+
+        #used if use_custom_xe=True
+        ("num_a", c_int),
+        ("a", c_double * max_reionization_redshifts),
+        ("xe", c_double * max_reionization_redshifts),
     ]
 
     def set_tau(self, tau, delta_redshift=None):
@@ -41,11 +52,25 @@ class ReionizationParams(CAMB_Structure):
         :param delta_redshift: delta z for reionization
         :return: self
         """
+        self.use_custom_xe=True
         self.use_optical_depth = True
         self.optical_depth = tau
         if delta_redshift is not None:
             self.delta_redshift = delta_redshift
         return self
+
+    def set_xe(self, a, xe):
+        """
+        Set a custom Xe(a) directly.
+        """
+        n = self.num_a = len(a)
+        if n>max_reionization_redshifts:
+            raise CAMBError('Can only give 200 redshift bins. You can modify this max in reionization.[py,f90]')
+        self.use_custom_xe = True
+        self.use_optical_depth = False
+        for i in range(n): 
+            self.a[i]  = a[i]
+            self.xe[i] = xe[i]
 
 
 class ReionizationHistory(CAMB_Structure):

@@ -28,15 +28,24 @@
 
     logical :: include_helium_fullreion = .true.
 
+    ! this should only be changed simultaneously as in reionization.py (if using Python wrapper)
+    integer, parameter :: max_reionization_redshifts = 200
+
+
     type ReionizationParams
         logical    :: Reionization
         logical    :: use_optical_depth
+        logical    :: use_custom_xe
         real(dl)   :: redshift, delta_redshift, fraction
         real(dl)   :: optical_depth
         !Parameters for the second reionization of Helium
         real(dl)   :: helium_redshift  = 3.5_dl
         real(dl)   :: helium_delta_redshift  = 0.5
         real(dl)   :: helium_redshiftstart  = 5._dl
+        !Parameters for custom_xe
+        integer    :: num_a
+        real(dl)   :: a(max_reionization_redshifts)
+        real(dl)   :: xe(max_reionization_redshifts)
     end type ReionizationParams
 
     type ReionizationHistory
@@ -70,6 +79,7 @@
     real(dl) Reionization_xe
     real(dl) tgh, xod
     real(dl) xstart
+    integer i
 
     if (present(xe_recomb)) then
         xstart = xe_recomb
@@ -77,26 +87,48 @@
         xstart = 0._dl
     end if
 
-    xod = (ThisReionHist%WindowVarMid - 1._dl/a**Rionization_zexp)/ThisReionHist%WindowVarDelta
-    if (xod > 100) then
-        tgh=1.d0
+    if (ThisReion%use_custom_xe) then
+
+        ! do linear interpolation of ThisReion%xe
+
+        if (a > ThisReion%a(1)) then
+            Reionization_xe = ThisReion%xe(1)
+        end if
+
+        if (a <= ThisReion%a(ThisReion%num_a)) then
+            Reionization_xe = ThisReion%xe(ThisReion%num_a)
+        end if
+
+        do i = 1, ThisReion%num_a
+            if ((ThisReion%a(i) >= a) .and. (a > ThisReion%a(i+1))) then
+                Reionization_xe = ThisReion%xe(i) + (a-ThisReion%a(i))/(ThisReion%a(i+1)-ThisReion%a(i))&
+                                                    *(ThisReion%xe(i+1)-ThisReion%xe(i))
+            end if
+        end do
+
     else
-        tgh=tanh(xod)
-    end if
-    Reionization_xe =(ThisReion%fraction-xstart)*(tgh+1._dl)/2._dl+xstart
 
-    if (include_helium_fullreion .and. a > (1/(1+ ThisReion%helium_redshiftstart))) then
-
-        !Effect of Helium becoming fully ionized is small so details not important
-        xod = (1+ThisReion%helium_redshift - 1._dl/a)/ThisReion%helium_delta_redshift
+        xod = (ThisReionHist%WindowVarMid - 1._dl/a**Rionization_zexp)/ThisReionHist%WindowVarDelta
         if (xod > 100) then
             tgh=1.d0
         else
             tgh=tanh(xod)
         end if
+        Reionization_xe =(ThisReion%fraction-xstart)*(tgh+1._dl)/2._dl+xstart
 
-        Reionization_xe =  Reionization_xe + ThisReionHist%fHe*(tgh+1._dl)/2._dl
+        if (include_helium_fullreion .and. a > (1/(1+ ThisReion%helium_redshiftstart))) then
 
+            !Effect of Helium becoming fully ionized is small so details not important
+            xod = (1+ThisReion%helium_redshift - 1._dl/a)/ThisReion%helium_delta_redshift
+            if (xod > 100) then
+                tgh=1.d0
+            else
+                tgh=tanh(xod)
+            end if
+
+            Reionization_xe =  Reionization_xe + ThisReionHist%fHe*(tgh+1._dl)/2._dl
+
+        end if
     end if
 
     end function Reionization_xe
