@@ -1,5 +1,6 @@
-from .baseconfig import CAMB_Structure, dll_import
-from ctypes import c_bool, c_int, c_double
+from .baseconfig import CAMB_Structure, dll_import, CAMBError, camblib
+from ctypes import c_bool, c_int, c_double, POINTER, byref
+from numpy import diff, vectorize
 
 # ---Variables in reionization.f90
 # To set the value please just put 
@@ -15,6 +16,9 @@ Reionization_AccuracyBoost = dll_import(c_bool, "reionization", "reionization_ac
 
 Rionization_zexp = dll_import(c_bool, "reionization", "rionization_zexp")
 
+CAMB_reionization_xe = camblib.__reionization_MOD_reionization_xe
+CAMB_reionization_xe.argtypes = (POINTER(c_double),POINTER(c_double),POINTER(c_double))
+CAMB_reionization_xe.restype = c_double
 
 
 #this should only be changed simultaneously as in reionization.f90
@@ -62,15 +66,35 @@ class ReionizationParams(CAMB_Structure):
     def set_xe(self, a, xe):
         """
         Set a custom Xe(a) directly.
+        :param a: array of scale factors, in descending order
+        :param xe: array of free electron fractions, Xe, at each scale factor
+        :return: self
         """
         n = self.num_a = len(a)
         if n>max_reionization_redshifts:
             raise CAMBError('Can only give 200 redshift bins. You can modify this max in reionization.[py,f90]')
+        if not all(diff(a)<0):
+            raise CAMBError("Must pass in array of scale factors in descending order")
+
         self.use_custom_xe = True
         self.use_optical_depth = False
         for i in range(n): 
             self.a[i]  = a[i]
             self.xe[i] = xe[i]
+        return self
+
+    @vectorize
+    def get_xe(a,tau=None,xe_recomb=None):
+        """
+        Get Xe(a)
+        :param a: scale factor
+        :param tau: (optional) conformal time, might be needed by some algorthims for convenience
+        :param xe_recomb: (option) starting value from recombination
+        """
+        if tau is None: tau=0
+        if xe_recomb is None: xe_recomb=0
+        return CAMB_reionization_xe(byref(c_double(a)),byref(c_double(tau)),byref(c_double(xe_recomb)))
+
 
 
 class ReionizationHistory(CAMB_Structure):
