@@ -56,7 +56,7 @@ class ReionizationParams(CAMB_Structure):
         :param delta_redshift: delta z for reionization
         :return: self
         """
-        self.use_custom_xe=True
+        self.use_custom_xe=False
         self.use_optical_depth = True
         self.optical_depth = tau
         if delta_redshift is not None:
