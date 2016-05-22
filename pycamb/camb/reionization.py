@@ -22,7 +22,7 @@ CAMB_reionization_xe.restype = c_double
 
 
 #this should only be changed simultaneously as in reionization.f90
-max_reionization_redshifts = 200 
+max_reionization_redshifts = 1024
 
 
 # ---Derived Types in reionization.f90
@@ -63,16 +63,20 @@ class ReionizationParams(CAMB_Structure):
             self.delta_redshift = delta_redshift
         return self
 
-    def set_xe(self, a, xe):
+    def set_xe(self, xe, a=None, z=None):
         """
         Set a custom Xe(a) directly.
-        :param a: array of scale factors, in descending order
+        :param a/z: array of scale factors or redshifts, must provide one and only one
         :param xe: array of free electron fractions, Xe, at each scale factor
         :return: self
         """
+        if (a is None) == (z is None):
+            raise CAMBError("Must provide one and only one of scale factors 'a' or redshifts 'z' as parameter to 'set_xe'.")
+        if a is None: a=1./(1+z)
+
         n = self.num_a = len(a)
         if n>max_reionization_redshifts:
-            raise CAMBError('Can only give 200 redshift bins. You can modify this max in reionization.[py,f90]')
+            raise CAMBError('Can only give %i redshift bins. You can modify this max in reionization.[py,f90]'%max_reionization_redshifts)
         if not all(diff(a)<0):
             raise CAMBError("Must pass in array of scale factors in descending order")
 
@@ -84,13 +88,17 @@ class ReionizationParams(CAMB_Structure):
         return self
 
     @vectorize
-    def get_xe(a,tau=None,xe_recomb=None):
+    def get_xe(a=None, z=None, tau=None, xe_recomb=None):
         """
         Get Xe(a)
-        :param a: scale factor
+        :param a/z: scale factor or redshift, must provide one and only one. can be an array.
         :param tau: (optional) conformal time, might be needed by some algorthims for convenience
         :param xe_recomb: (option) starting value from recombination
         """
+        if (a is None) == (z is None):
+            raise CAMBError("Must provide one and only one of scale factors 'a' or redshifts 'z' as parameter to 'get_xe'.")
+        if a is None: a=1./(1+z)
+
         if tau is None: tau=0
         if xe_recomb is None: xe_recomb=0
         return CAMB_reionization_xe(byref(c_double(a)),byref(c_double(tau)),byref(c_double(xe_recomb)))

@@ -29,7 +29,7 @@
     logical :: include_helium_fullreion = .true.
 
     ! this should only be changed simultaneously as in reionization.py (if using Python wrapper)
-    integer, parameter :: max_reionization_redshifts = 200
+    integer, parameter :: max_reionization_redshifts = 1024
 
 
     type ReionizationParams
