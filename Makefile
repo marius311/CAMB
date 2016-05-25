@@ -35,10 +35,6 @@ DEBUGFLAGS = -cpp -g -fbounds-check -fbacktrace -ffree-line-length-none -fmax-er
 MODOUT =  -J$(OUTPUT_DIR)
 SMODOUT = -J$(DLL_DIR)
 
-ifneq ($(shell uname -s),Darwin)
-#native optimization does not work on Mac
-FFLAGS+=-march=native
-endif
 endif
 endif
 
