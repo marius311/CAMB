@@ -28,6 +28,13 @@ os.chdir(file_dir)
 is32Bit = struct.calcsize("P") == 4
 
 
+if '--debug' in sys.argv:
+    debug = True
+    sys.argv.remove('--debug')
+else:
+    debug = False
+
+
 def find_version():
     version_file = io.open(os.path.join(file_dir, '%s/__init__.py' % package_name)).read()
     version_match = re.search(r"^__version__ = ['\"]([^'\"]*)['\"]", version_file, re.M)
@@ -88,10 +95,11 @@ class SharedLibrary(install):
 
         else:
             print("Compiling source...")
-            subprocess.call("make camblib.so", shell=True)
-            if not osp.isfile(os.path.join('Releaselib', 'camblib.so')): sys.exit('Compilation failed')
-            subprocess.call("chmod 755 Releaselib/camblib.so", shell=True)
-            subprocess.call(r"cp Releaselib/camblib.so %s/camb" % (pycamb_path), shell=True)
+            subprocess.call("make %s camblib.so" % ("Debug" if debug else ""), shell=True)
+            target = "Debug" if debug else "Release"
+            if not osp.isfile(os.path.join('%slib' % target, 'camblib.so')): sys.exit('Compilation failed')
+            subprocess.call("chmod 755 %slib/camblib.so" % target, shell=True)
+            subprocess.call(r"cp %slib/camblib.so %s/camb" % (target,pycamb_path), shell=True)
             subprocess.call("cp HighLExtrapTemplate_lenspotentialCls.dat %s/camb" % (pycamb_path), shell=True)
 
         os.chdir(file_dir)
