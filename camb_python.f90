@@ -91,8 +91,8 @@
     type(CAMBparams) :: P
 
     global_error_flag = 0
-    data%Params = P
-    call CAMBParams_Set(data%Params)
+    call CAMBParams_Set(P)
+    data%Params = CP
     end subroutine CAMBdata_SetParamsForBackground
 
     function CAMBdata_CalcBackgroundTheory(data, P) result(error)
@@ -102,9 +102,9 @@
     integer error
 
     global_error_flag = 0
-    data%Params = P
-    call CAMBParams_Set(data%Params)
+    call CAMBParams_Set(P)
     call InitVars !calculate thermal history, e.g. z_drag etc.
+    data%Params = CP
     error=global_error_flag
 
     end function CAMBdata_CalcBackgroundTheory
