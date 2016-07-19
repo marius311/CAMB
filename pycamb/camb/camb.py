@@ -2,6 +2,7 @@ from .baseconfig import camblib, CAMBError, CAMB_Structure, dll_import
 import ctypes
 from ctypes import c_float, c_int, c_double, c_bool, POINTER, byref
 from . import model, constants, initialpower, lensing
+from . import reionization as ion
 import numpy as np
 from numpy import ctypeslib as nplib
 from numpy.ctypeslib import ndpointer
@@ -169,6 +170,11 @@ CAMB_TimeEvolution.argtypes = [int_arg, numpy_1d, int_arg, numpy_1d,
 
 CAMB_BackgroundEvolution = camblib.__thermodata_MOD_getbackgroundevolution
 CAMB_BackgroundEvolution.argtypes = [int_arg, numpy_1d, numpy_2d]
+
+CAMB_reionization_GetOptDepth = camblib.__reionization_MOD_reionization_getoptdepth
+CAMB_reionization_GetOptDepth.argtypes = (POINTER(ion.ReionizationParams),POINTER(ion.ReionizationHistory))
+CAMB_reionization_GetOptDepth.restype = c_double
+
 
 
 class MatterTransferData(object):
@@ -940,6 +946,14 @@ class CAMBdata(object):
         :return: theta_MC
         """
         return CosmomcTheta()
+        
+    def get_tau(self):
+        """
+        Get tau given the current reionization history that's been set, either 
+        by setting zre, Xe, or tau itself. 
+        """
+        return CAMB_reionization_GetOptDepth(byref(self.Params.Reion),byref(self.Params.ReionHist))
+        
 
 
 def get_results(params):
