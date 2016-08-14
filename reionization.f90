@@ -103,6 +103,7 @@
             if ((ThisReion%a(i) >= a) .and. (a > ThisReion%a(i+1))) then
                 Reionization_xe = ThisReion%xe(i) + (a-ThisReion%a(i))/(ThisReion%a(i+1)-ThisReion%a(i))&
                                                     *(ThisReion%xe(i+1)-ThisReion%xe(i))
+                return
             end if
         end do
 
@@ -188,7 +189,7 @@
     Type(ReionizationHistory), target :: ReionHist
     real(dl), intent(in) :: akthom, tau0, Yhe
     integer, intent(in) :: FeedbackLevel
-    real(dl) astart
+    real(dl) astart, aend
 
     ReionHist%akthom = akthom
     ReionHist%fHe =  YHe/(mass_ratio_He_H*(1.d0-YHe))
@@ -217,24 +218,28 @@
         if (Reion%fraction==Reionization_DefFraction) &
             Reion%fraction = 1._dl + ReionHist%fHe  !H + singly ionized He
 
-        if (Reion%use_optical_depth) then
-            call Reionization_SetFromOptDepth(Reion,ReionHist)
-            if (FeedbackLevel > 0) write(*,'("Reion redshift       =  ",f6.3)') Reion%redshift
+        if (Reion%use_custom_xe) then
+            astart = Reion%a(Reion%num_a)
+            aend = Reion%a(1)
+        else
+            if (Reion%use_optical_depth) then
+                call Reionization_SetFromOptDepth(Reion,ReionHist)
+                if (FeedbackLevel > 0) write(*,'("Reion redshift       =  ",f6.3)') Reion%redshift
+            end if
+
+            call Reionization_SetParamsForZre(ThisReion,ThisReionHist)
+            
+            astart = 1.d0/(1.d0+         Reion%redshift + Reion%delta_redshift*8)
+            aend   = 1.d0/(1.d0+max(0.d0,Reion%redshift - Reion%delta_redshift*8))
         end if
-
-        call Reionization_SetParamsForZre(ThisReion,ThisReionHist)
-
+        
+        ReionHist%tau_start = max(0.05_dl, rombint(dtauda,0._dl,astart,1d-3))
+        ReionHist%tau_complete = min(tau0, ReionHist%tau_start + rombint(dtauda,astart,aend,1d-3))
+        
         !this is a check, agrees very well in default parameterization
         if (FeedbackLevel > 1) write(*,'("Integrated opt depth = ",f7.4)') &
             Reionization_GetOptDepth(Reion, ReionHist)
 
-        !Get relevant times
-        astart=1.d0/(1.d0+Reion%redshift + Reion%delta_redshift*8)
-        ReionHist%tau_start = max(0.05_dl, rombint(dtauda,0._dl,astart,1d-3))
-        !Time when a very small reionization fraction (assuming tanh fitting)
-
-        ReionHist%tau_complete = min(tau0, &
-            ReionHist%tau_start+ rombint(dtauda,astart,1.d0/(1.d0+max(0.d0,Reion%redshift-Reion%delta_redshift*8)),1d-3))
 
     end if
 
@@ -399,4 +404,3 @@
 
 
     end module Reionization
-
