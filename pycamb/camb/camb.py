@@ -44,6 +44,8 @@ class _ClTransferData(CAMB_Structure):
 # Use FeedbackLevel.value to read and set
 FeedbackLevel = dll_import(c_int, "modelparams", "feedbacklevel")
 
+ignore_fatal_errors = dll_import(c_bool,"amlutils","ignore_fatal_errors")
+
 model.has_cl_2D_array.value = True
 
 int_arg = POINTER(c_int)

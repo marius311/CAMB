@@ -969,6 +969,8 @@
 
     logical file_units(file_units_start:file_units_end)
 
+    logical :: ignore_fatal_errors
+
     INTERFACE CONCAT
     module procedure concat_s, concat_s_n
     END INTERFACE
@@ -1047,11 +1049,16 @@
     subroutine MpiStop(Msg)
     character(LEN=*), intent(in), optional :: Msg
     integer i
-#ifdef MPI 
+#ifdef MPI
     integer ierror, MpiRank
 #endif
 
     if (present(Msg)) write(*,*) trim(Msg)
+
+    if (ignore_fatal_errors) then
+        write (*,*) 'WARNING: Ignoring otherwise fatal error, as requested'
+        return
+    end if
 
 #ifdef MPI
     call mpi_comm_rank(mpi_comm_world,MPIrank,ierror)
