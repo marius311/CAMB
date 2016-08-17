@@ -1,6 +1,6 @@
 from .baseconfig import CAMB_Structure, dll_import, CAMBError, camblib
 from ctypes import c_bool, c_int, c_double, POINTER, byref
-from numpy import diff, vectorize
+from numpy import diff, vectorize, log
 
 # ---Variables in reionization.f90
 # To set the value please just put 
@@ -63,11 +63,19 @@ class ReionizationParams(CAMB_Structure):
             self.delta_redshift = delta_redshift
         return self
 
-    def set_xe(self, xe, a=None, z=None):
+    def set_xe(self, xe, a=None, z=None, smooth=0):
         """
-        Set a custom Xe(a) directly.
+        Set a custom reionization history directly. Linear interpolation is used in between datapoints. 
+        
+        CAMB also requries the second derivative of Xe to be continuous for
+        numerical integration. You can use smooth>0 to automatically smooth your
+        function if this is not the case. 
+        
         :param a/z: array of scale factors or redshifts, must provide one and only one
         :param xe: array of free electron fractions, Xe, at each scale factor
+        :param smooth: smooth the input Xe with a cubic smoothing spline with this smoothing parameter. 
+                       (1e-3 seems to work well if smoothing is needed. you can
+                       call `get_xe` to check how much your function was altered)
         :return: self
         """
         if (a is None) == (z is None):
@@ -80,8 +88,14 @@ class ReionizationParams(CAMB_Structure):
         if not all(diff(a)<0):
             raise CAMBError("Must pass in array of scale factors in descending order")
 
+        if smooth>0:
+            from scipy.interpolate import UnivariateSpline
+            if z is None: z=1./a-1
+            xe = UnivariateSpline(z,xe,s=smooth)(z)
+
         self.use_custom_xe = True
         self.use_optical_depth = False
+        self.optical_depth = 0
         for i in range(n): 
             self.a[i]  = a[i]
             self.xe[i] = xe[i]
@@ -93,7 +107,7 @@ class ReionizationParams(CAMB_Structure):
         Get Xe(a)
         :param a/z: scale factor or redshift, must provide one and only one. can be an array.
         :param tau: (optional) conformal time, might be needed by some algorthims for convenience
-        :param xe_recomb: (option) starting value from recombination
+        :param xe_recomb: (optional) starting value from recombination
         """
         if (a is None) == (z is None):
             raise CAMBError("Must provide one and only one of scale factors 'a' or redshifts 'z' as parameter to 'get_xe'.")
