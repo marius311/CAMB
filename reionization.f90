@@ -102,7 +102,7 @@
         do i = 1, ThisReion%num_a
             if ((ThisReion%a(i) >= a) .and. (a > ThisReion%a(i+1))) then
                 Reionization_xe = ThisReion%xe(i) + (a-ThisReion%a(i))/(ThisReion%a(i+1)-ThisReion%a(i))&
-                                                    *(ThisReion%xe(i+1)-ThisReion%xe(i))
+                                                    *(ThisReion%xe(i+1)-ThisReion%xe(i)) + xstart
                 return
             end if
         end do
