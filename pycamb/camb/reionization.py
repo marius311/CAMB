@@ -71,6 +71,10 @@ class ReionizationParams(CAMB_Structure):
         numerical integration. You can use smooth>0 to automatically smooth your
         function if this is not the case. 
         
+        Note that for computing the Cls, CAMB will add a small residual level on
+        the order of ~1e-5 (the amount left over from recombination) to what you
+        have supplied here. 
+        
         :param a/z: array of scale factors or redshifts, must provide one and only one
         :param xe: array of free electron fractions, Xe, at each scale factor
         :param smooth: smooth the input Xe with a cubic smoothing spline with this smoothing parameter. 
