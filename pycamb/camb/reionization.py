@@ -80,7 +80,7 @@ class ReionizationParams(CAMB_Structure):
         :param smooth: smooth the input Xe with a cubic smoothing spline with this smoothing parameter. 
                        (1e-3 seems to work well if smoothing is needed. you can
                        call `get_xe` to check how much your function was altered)
-        :return: self
+        :return: the reionization history that was set (may be different than input if smooth!=0)
         """
         if (a is None) == (z is None):
             raise CAMBError("Must provide one and only one of scale factors 'a' or redshifts 'z' as parameter to 'set_xe'.")
@@ -103,7 +103,7 @@ class ReionizationParams(CAMB_Structure):
         for i in range(n): 
             self.a[i]  = a[i]
             self.xe[i] = xe[i]
-        return self
+        return xe
 
     @vectorize
     def get_xe(a=None, z=None, tau=None, xe_recomb=None):
