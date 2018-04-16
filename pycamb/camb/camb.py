@@ -174,9 +174,8 @@ CAMB_BackgroundEvolution = camblib.__thermodata_MOD_getbackgroundevolution
 CAMB_BackgroundEvolution.argtypes = [int_arg, numpy_1d, numpy_2d]
 
 CAMB_reionization_GetOptDepth = camblib.__reionization_MOD_reionization_getoptdepth
-CAMB_reionization_GetOptDepth.argtypes = (POINTER(ion.ReionizationParams),POINTER(ion.ReionizationHistory))
+CAMB_reionization_GetOptDepth.argtypes = (POINTER(ion.ReionizationParams),POINTER(ion.ReionizationHistory),d_arg,d_arg)
 CAMB_reionization_GetOptDepth.restype = c_double
-
 
 
 class MatterTransferData(object):
@@ -949,12 +948,14 @@ class CAMBdata(object):
         """
         return CosmomcTheta()
         
-    def get_tau(self):
+    def get_tau(self, z1=None, z2=None):
         """
-        Get tau given the current reionization history that's been set, either 
-        by setting zre, Xe, or tau itself. 
+        Get optical depth between z1 and z2 given the current reionization
+        history that's been set, either  by setting zre, Xe, or tau itself.
+        z1/z2 default to 0 and `Reionization_maxz` in reionization.f90
         """
-        return CAMB_reionization_GetOptDepth(byref(self.Params.Reion),byref(self.Params.ReionHist))
+        return CAMB_reionization_GetOptDepth(byref(self.Params.Reion), byref(self.Params.ReionHist), 
+                                             byref(c_double(z1)) if z1 else None, byref(c_double(z2)) if z2 else None)
         
 
 

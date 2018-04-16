@@ -306,14 +306,27 @@
 
     end function Reionization_doptdepth_dz
 
-    function Reionization_GetOptDepth(Reion, ReionHist)
+    function Reionization_GetOptDepth(Reion, ReionHist, z1, z2)
     Type(ReionizationParams), target :: Reion
     Type(ReionizationHistory), target :: ReionHist
+    real(dl), optional :: z1, z2
+    real(dl) :: z1_val, z2_val
     real(dl) Reionization_GetOptDepth
+    
+    if (present(z1)) then
+        z1_val = z1
+    else
+        z1_val = 0.d0
+    end if
+    if (present(z2)) then
+        z2_val = z2
+    else
+        z2_val = Reionization_maxz
+    end if
 
     ThisReion => Reion
     ThisReionHist => ReionHist
-    Reionization_GetOptDepth = rombint2(Reionization_doptdepth_dz,0.d0,Reionization_maxz,&
+    Reionization_GetOptDepth = rombint2(Reionization_doptdepth_dz,z1_val,z2_val,&
         Reionization_tol, 20, nint(Reionization_maxz/Reion%delta_redshift*5))
 
     end function Reionization_GetOptDepth
